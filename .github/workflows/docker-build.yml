@@ -1,8 +1,8 @@
 # Reusable workflow to build/push a service image and bump its tag in the
 # gitops repo. Does NOT deploy or touch a cluster - Argo CD reconciles the
 # gitops repo after this workflow commits to it. Called from
-# ORG_NAME/<repo>/.github/workflows/*.yml via
-# `uses: ORG_NAME/.github/.github/workflows/docker-build.yml@main`.
+# mini-sector/<repo>/.github/workflows/*.yml via
+# `uses: mini-sector/.github/.github/workflows/docker-build.yml@main`.
 name: docker-build
 
 on:
@@ -25,7 +25,7 @@ on:
         type: string
         default: ghcr.io
       gitops-repo:
-        description: Repo containing the Kustomize overlays, e.g. ORG_NAME/gitops
+        description: Repo containing the Kustomize overlays, e.g. mini-sector/gitops
         type: string
         required: true
       gitops-path:
@@ -73,8 +73,8 @@ jobs:
           file: ${{ inputs.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:${{ steps.tags.outputs.sha-tag }}
-            ${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:latest
+            ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ steps.tags.outputs.sha-tag }}
+            ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -95,7 +95,7 @@ jobs:
 
       - name: Set image tag
         working-directory: ${{ inputs.gitops-path }}
-        run: kustomize edit set image ${{ inputs.service }}=${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
+        run: kustomize edit set image ${{ inputs.service }}=${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
 
       - name: Commit and push
         run: |

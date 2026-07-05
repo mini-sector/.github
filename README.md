@@ -1,19 +1,9 @@
 # .github
 
-Org-wide defaults and shared CI/CD building blocks for **ORG_NAME**: reusable
+Org-wide defaults and shared CI/CD building blocks for **mini-sector**: reusable
 GitHub Actions workflows and composite actions used across the Rust backend
 workspace, the Rust telemetry client, the TypeScript frontend, Terraform
 infra, and the Argo CD gitops repo.
-
-## `ORG_NAME` placeholder
-
-This repo uses the literal placeholder `ORG_NAME` everywhere an org name is
-required (workflow `uses:` references, image tags, etc). Once the org name is
-final, replace every occurrence in one pass from the repo root:
-
-```sh
-grep -rl ORG_NAME . | xargs sed -i 's/ORG_NAME/<final-org-name>/g'
-```
 
 ## Why the path has `.github/.github/workflows`
 
@@ -21,7 +11,7 @@ This repository is itself named `.github`, and reusable workflows must live
 under `.github/workflows/` for GitHub to discover them. That means, relative
 to the repo root, the workflows sit at `./.github/workflows/*.yml` on disk —
 and when another repo references them, the reference is
-`ORG_NAME/.github/.github/workflows/rust-ci.yml@main` (org **/** repo **/**
+`mini-sector/.github/.github/workflows/rust-ci.yml@main` (org **/** repo **/**
 path-within-repo). The doubled segment is just the repo name (`.github`)
 followed by the in-repo path (`.github/workflows/...`); it is not a mistake
 and there is no third `.github` level to add. Do not "fix" it.
@@ -87,7 +77,7 @@ fmt, clippy, and test for a Rust crate or workspace, with an optional
 | `run-deny` | boolean | `false` | Run `cargo-deny check` after tests |
 
 ```yaml
-# in ORG_NAME/platform/.github/workflows/ci.yml
+# in mini-sector/platform/.github/workflows/ci.yml
 name: CI
 on:
   pull_request:
@@ -95,7 +85,7 @@ on:
     branches: [main]
 jobs:
   rust:
-    uses: ORG_NAME/.github/.github/workflows/rust-ci.yml@main
+    uses: mini-sector/.github/.github/workflows/rust-ci.yml@main
     with:
       workspace: true
 ```
@@ -112,7 +102,7 @@ touches a cluster; Argo CD reconciles the gitops repo separately.
 | `dockerfile` | string | `Dockerfile` | Path to the Dockerfile |
 | `context` | string | `.` | Docker build context |
 | `registry` | string | `ghcr.io` | Container registry to push to |
-| `gitops-repo` | string | *(required)* | Repo containing the Kustomize overlays, e.g. `ORG_NAME/gitops` |
+| `gitops-repo` | string | *(required)* | Repo containing the Kustomize overlays, e.g. `mini-sector/gitops` |
 | `gitops-path` | string | *(required)* | Directory containing the Kustomize overlay to update |
 
 | Secret | Required | Description |
@@ -120,17 +110,17 @@ touches a cluster; Argo CD reconciles the gitops repo separately.
 | `gitops-token` | yes | PAT or GitHub App token with write access to the gitops repo |
 
 ```yaml
-# in ORG_NAME/platform/.github/workflows/release.yml
+# in mini-sector/platform/.github/workflows/release.yml
 name: Release
 on:
   push:
     branches: [main]
 jobs:
   gateway:
-    uses: ORG_NAME/.github/.github/workflows/docker-build.yml@main
+    uses: mini-sector/.github/.github/workflows/docker-build.yml@main
     with:
       service: gateway
-      gitops-repo: ORG_NAME/gitops
+      gitops-repo: mini-sector/gitops
       gitops-path: apps/gateway/overlays/dev
     secrets:
       gitops-token: ${{ secrets.GITOPS_TOKEN }}
@@ -154,7 +144,7 @@ OIDC.
 | `azure-subscription-id` | yes | Azure subscription ID |
 
 ```yaml
-# in ORG_NAME/infra/.github/workflows/terraform.yml
+# in mini-sector/infra/.github/workflows/terraform.yml
 name: Terraform
 on:
   pull_request:
@@ -162,7 +152,7 @@ on:
     branches: [main]
 jobs:
   plan:
-    uses: ORG_NAME/.github/.github/workflows/terraform.yml@main
+    uses: mini-sector/.github/.github/workflows/terraform.yml@main
     with:
       workspace: dev
       apply: ${{ github.ref == 'refs/heads/main' }}

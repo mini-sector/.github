@@ -1,4 +1,4 @@
-# ORG_NAME
+# mini-sector
 
 Project name TBD. A hobby platform for live telemetry logging and replay for the EA Sports F1 games.
 

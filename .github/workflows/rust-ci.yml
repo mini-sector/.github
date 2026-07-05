@@ -1,6 +1,6 @@
 # Reusable CI workflow for Rust crates/workspaces: fmt, clippy, test, and
-# optionally cargo-deny. Called from ORG_NAME/<repo>/.github/workflows/*.yml
-# via `uses: ORG_NAME/.github/.github/workflows/rust-ci.yml@main`.
+# optionally cargo-deny. Called from mini-sector/<repo>/.github/workflows/*.yml
+# via `uses: mini-sector/.github/.github/workflows/rust-ci.yml@main`.
 name: rust-ci
 
 on:
@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Rust
-        uses: ORG_NAME/.github/actions/setup-rust@main
+        uses: mini-sector/.github/actions/setup-rust@main
         with:
           toolchain: ${{ inputs.toolchain }}
 
