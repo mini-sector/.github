@@ -1,0 +1,62 @@
+# Reusable CI workflow for Rust crates/workspaces: fmt, clippy, test, and
+# optionally cargo-deny. Called from ORG_NAME/<repo>/.github/workflows/*.yml
+# via `uses: ORG_NAME/.github/.github/workflows/rust-ci.yml@main`.
+name: rust-ci
+
+on:
+  workflow_call:
+    inputs:
+      workspace:
+        description: Pass --workspace to cargo commands
+        type: boolean
+        default: false
+      toolchain:
+        description: Rust toolchain to install
+        type: string
+        default: stable
+      run-deny:
+        description: Run cargo-deny after tests
+        type: boolean
+        default: false
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: ORG_NAME/.github/actions/setup-rust@main
+        with:
+          toolchain: ${{ inputs.toolchain }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (workspace)
+        if: ${{ inputs.workspace }}
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Clippy
+        if: ${{ !inputs.workspace }}
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test (workspace)
+        if: ${{ inputs.workspace }}
+        run: cargo test --workspace
+
+      - name: Test
+        if: ${{ !inputs.workspace }}
+        run: cargo test
+
+      - name: Install cargo-deny
+        if: ${{ inputs.run-deny }}
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: cargo deny check
+        if: ${{ inputs.run-deny }}
+        run: cargo deny check

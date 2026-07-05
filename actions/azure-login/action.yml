@@ -1,0 +1,28 @@
+# Logs in to Azure via OIDC federated credentials (no service principal secrets).
+# Called by the terraform reusable workflow and any repo-local Azure job.
+#
+# NOTE: the calling workflow/job MUST declare `permissions: id-token: write`
+# for OIDC token issuance to succeed.
+name: azure-login
+description: Log in to Azure using OpenID Connect federated credentials.
+
+inputs:
+  client-id:
+    description: Azure AD application (client) ID
+    required: true
+  tenant-id:
+    description: Azure AD tenant ID
+    required: true
+  subscription-id:
+    description: Azure subscription ID
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Azure login (OIDC)
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.client-id }}
+        tenant-id: ${{ inputs.tenant-id }}
+        subscription-id: ${{ inputs.subscription-id }}

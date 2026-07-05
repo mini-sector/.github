@@ -1,0 +1,106 @@
+# Reusable workflow to build/push a service image and bump its tag in the
+# gitops repo. Does NOT deploy or touch a cluster - Argo CD reconciles the
+# gitops repo after this workflow commits to it. Called from
+# ORG_NAME/<repo>/.github/workflows/*.yml via
+# `uses: ORG_NAME/.github/.github/workflows/docker-build.yml@main`.
+name: docker-build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Crate/service name; also used as the image name
+        type: string
+        required: true
+      dockerfile:
+        description: Path to the Dockerfile
+        type: string
+        default: Dockerfile
+      context:
+        description: Docker build context
+        type: string
+        default: "."
+      registry:
+        description: Container registry to push to
+        type: string
+        default: ghcr.io
+      gitops-repo:
+        description: Repo containing the Kustomize overlays, e.g. ORG_NAME/gitops
+        type: string
+        required: true
+      gitops-path:
+        description: Directory containing the Kustomize overlay to update
+        type: string
+        required: true
+    secrets:
+      gitops-token:
+        description: PAT or GitHub App token with write access to the gitops repo
+        required: true
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      sha-tag: ${{ steps.tags.outputs.sha-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to registry
+        if: ${{ inputs.registry == 'ghcr.io' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags
+        id: tags
+        shell: bash
+        run: echo "sha-tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:${{ steps.tags.outputs.sha-tag }}
+            ${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-gitops:
+    needs: build-push
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout gitops repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.gitops-repo }}
+          token: ${{ secrets.gitops-token }}
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Set image tag
+        working-directory: ${{ inputs.gitops-path }}
+        run: kustomize edit set image ${{ inputs.service }}=${{ inputs.registry }}/ORG_NAME/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ inputs.gitops-path }}"
+          git commit -m "chore(${{ inputs.service }}): image ${{ needs.build-push.outputs.sha-tag }}"
+          git push

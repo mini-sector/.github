@@ -1,0 +1,35 @@
+# Installs Terraform and selects/creates the target workspace.
+# Called by the terraform reusable workflow and any repo-local Terraform job.
+name: setup-terraform
+description: Install Terraform, run init, and select (or create) a workspace.
+
+inputs:
+  terraform-version:
+    description: Terraform version constraint to install
+    required: false
+    default: "~1.9"
+  workspace:
+    description: Terraform workspace name, e.g. dev or prod
+    required: true
+  working-directory:
+    description: Directory containing the Terraform configuration
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+
+    - name: Terraform init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform init
+
+    - name: Select or create workspace
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform workspace select -or-create ${{ inputs.workspace }}
