@@ -32,6 +32,10 @@ on:
         description: Directory containing the Kustomize overlay to update
         type: string
         required: true
+      build-args:
+        type: string
+        default: ""
+        description: Newline-separated KEY=value pairs passed to docker build
     secrets:
       gitops-token:
         description: PAT or GitHub App token with write access to the gitops repo
@@ -75,6 +79,7 @@ jobs:
           tags: |
             ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ steps.tags.outputs.sha-tag }}
             ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:latest
+          build-args: ${{ inputs.build-args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -104,6 +104,7 @@ touches a cluster; Argo CD reconciles the gitops repo separately.
 | `registry` | string | `ghcr.io` | Container registry to push to |
 | `gitops-repo` | string | *(required)* | Repo containing the Kustomize overlays, e.g. `mini-sector/gitops` |
 | `gitops-path` | string | *(required)* | Directory containing the Kustomize overlay to update |
+| `build-args` | string | `""` | Newline-separated `KEY=value` pairs passed to docker build |
 
 | Secret | Required | Description |
 |---|---|---|
