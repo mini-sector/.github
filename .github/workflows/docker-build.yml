@@ -88,24 +88,50 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: gitops-update-${{ inputs.gitops-repo }}
+      cancel-in-progress: false
     steps:
       - name: Checkout gitops repo
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.gitops-repo }}
           token: ${{ secrets.gitops-token }}
+          path: gitops-checkout
+
+      - name: Check overlay exists
+        id: overlay
+        shell: bash
+        run: |
+          if [[ -f "gitops-checkout/${{ inputs.gitops-path }}/kustomization.yaml" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::no gitops app for '${{ inputs.service }}' at '${{ inputs.gitops-path }}' — image published, promotion skipped"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install kustomize
+        if: steps.overlay.outputs.exists == 'true'
         uses: imranismail/setup-kustomize@v2
 
       - name: Set image tag
-        working-directory: ${{ inputs.gitops-path }}
+        if: steps.overlay.outputs.exists == 'true'
+        working-directory: gitops-checkout/${{ inputs.gitops-path }}
         run: kustomize edit set image ${{ inputs.service }}=${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
 
       - name: Commit and push
+        if: steps.overlay.outputs.exists == 'true'
+        working-directory: gitops-checkout
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          SHORT_SHA="${{ needs.build-push.outputs.sha-tag }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
           git add "${{ inputs.gitops-path }}"
-          git commit -m "chore(${{ inputs.service }}): image ${{ needs.build-push.outputs.sha-tag }}"
-          git push
+          if git diff --cached --quiet; then
+            echo "::notice::no changes to commit for '${{ inputs.service }}'"
+          else
+            git commit -m "chore: bump ${{ inputs.service }} to ${SHORT_SHA}"
+            git push
+          fi
