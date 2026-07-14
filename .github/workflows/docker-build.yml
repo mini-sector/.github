@@ -117,7 +117,7 @@ jobs:
       - name: Set image tag
         if: steps.overlay.outputs.exists == 'true'
         working-directory: gitops-checkout/${{ inputs.gitops-path }}
-        run: kustomize edit set image ${{ inputs.service }}=${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
+        run: kustomize edit set image ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
 
       - name: Commit and push
         if: steps.overlay.outputs.exists == 'true'
