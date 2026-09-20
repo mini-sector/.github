@@ -41,8 +41,11 @@ on:
         default: false
         description: Skip the gitops update job (caller handles it)
     secrets:
-      gitops-token:
-        description: PAT or GitHub App token with write access to the gitops repo
+      gitops-app-id:
+        description: GitHub App ID for gitops repo access
+        required: true
+      gitops-app-private-key:
+        description: GitHub App private key for gitops repo access
         required: true
       azure-client-id:
         description: Azure AD application (client) ID, for non-ghcr (ACR) registries
@@ -119,11 +122,20 @@ jobs:
       group: gitops-update-${{ inputs.gitops-repo }}
       cancel-in-progress: false
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.gitops-app-id }}
+          private-key: ${{ secrets.gitops-app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: gitops
+
       - name: Checkout gitops repo
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.gitops-repo }}
-          token: ${{ secrets.gitops-token }}
+          token: ${{ steps.app-token.outputs.token }}
           path: gitops-checkout
 
       - name: Check overlay exists
