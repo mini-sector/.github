@@ -36,6 +36,10 @@ on:
         type: string
         default: ""
         description: Newline-separated KEY=value pairs passed to docker build
+      run-number:
+        type: string
+        required: true
+        description: Caller's github.run_number for image tag
       skip-gitops:
         type: boolean
         default: false
@@ -66,7 +70,7 @@ jobs:
       packages: write
       id-token: write
     outputs:
-      sha-tag: ${{ steps.tags.outputs.sha-tag }}
+      image-tag: ${{ steps.tags.outputs.image-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,7 +102,9 @@ jobs:
       - name: Compute tags
         id: tags
         shell: bash
-        run: echo "sha-tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          echo "image-tag=${{ inputs.run-number }}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -107,7 +113,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ steps.tags.outputs.sha-tag }}
+            ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ steps.tags.outputs.image-tag }}
             ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:latest
           build-args: ${{ inputs.build-args }}
           cache-from: type=gha
@@ -156,7 +162,7 @@ jobs:
       - name: Set image tag
         if: steps.overlay.outputs.exists == 'true'
         working-directory: gitops-checkout/${{ inputs.gitops-path }}
-        run: kustomize edit set image ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.sha-tag }}
+        run: kustomize edit set image ${{ inputs.registry }}/mini-sector/${{ inputs.service }}:${{ needs.build-push.outputs.image-tag }}
 
       - name: Commit and push
         if: steps.overlay.outputs.exists == 'true'
@@ -165,12 +171,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          SHORT_SHA="${{ needs.build-push.outputs.sha-tag }}"
-          SHORT_SHA="${SHORT_SHA:0:7}"
+          IMAGE_TAG="${{ needs.build-push.outputs.image-tag }}"
           git add "${{ inputs.gitops-path }}"
           if git diff --cached --quiet; then
             echo "::notice::no changes to commit for '${{ inputs.service }}'"
           else
-            git commit -m "chore: bump ${{ inputs.service }} to ${SHORT_SHA}"
+            git commit -m "chore: bump ${{ inputs.service }} to ${IMAGE_TAG}"
             git push
           fi
